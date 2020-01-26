@@ -61,3 +61,23 @@ def load_offices():
     offices = pd.read_csv('startup-investments/offices.csv',low_memory=False)
     offices_df = offices.merge(obj,left_on='object_id',right_on='id',how='left')[['name','object_id','city','state_code','country_code','latitude','longitude']]
     return offices_df
+
+def load_relationships():
+    """
+    Loads the relationship data merged with the people dataframe
+
+    Args:
+    None
+
+    Returns:
+    relationships (pd.DataFrame): dataframe containing people and relationships data
+    """
+    people = pd.read_csv('startup-investments/people.csv',low_memory=False)
+    relationships = pd.read_csv('startup-investments/relationships.csv',low_memory=False)
+    degrees = pd.read_csv('startup-investments/degrees.csv',low_memory=False)
+    objects = pd.read_csv('startup-investments/objects.csv',low_memory=False)
+    obj = objects[['id','name']]
+    people_df = people.merge(degrees,left_on='object_id',right_on='object_id',how='left')[['object_id','first_name','last_name','affiliation_name','degree_type','subject','institution']]
+    relationship_df = people_df.merge(relationships,left_on='object_id',right_on='person_object_id',how='left')[['object_id','first_name','last_name','affiliation_name','degree_type','subject','institution','title','relationship_object_id']].merge(obj,left_on='relationship_object_id',right_on='id',how='left')[['object_id','id','first_name','last_name','affiliation_name','degree_type','subject','institution','title','name']]
+    relationship_df.rename(columns={'object_id':'person_id'},inplace=True)
+    return relationship_df
