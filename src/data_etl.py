@@ -81,3 +81,24 @@ def load_relationships():
     relationship_df = people_df.merge(relationships,left_on='object_id',right_on='person_object_id',how='left')[['object_id','first_name','last_name','affiliation_name','degree_type','subject','institution','title','relationship_object_id']].merge(obj,left_on='relationship_object_id',right_on='id',how='left')[['object_id','id','first_name','last_name','affiliation_name','degree_type','subject','institution','title','name']]
     relationship_df.rename(columns={'object_id':'person_id'},inplace=True)
     return relationship_df
+
+
+def load_investments():
+    """
+    Loads the funding rounds table and merges with the objects
+    """
+    funding_rounds = pd.read_csv('startup-investments/funding_rounds.csv',low_memory=False)
+    objects = pd.read_csv('startup-investments/objects.csv',low_memory=False)
+    obj = objects[['id','name']]
+    funds = pd.read_csv('startup-investments/funds.csv',low_memory=False)
+    investments = pd.read_csv('startup-investments/investments.csv',low_memory=False)
+    funding_rounds = funding_rounds[['funding_round_id','object_id','funded_at','funding_round_type','raised_amount_usd','pre_money_valuation_usd','post_money_valuation_usd','participants','created_at']]
+    fundraise_df = funding_rounds.merge(investments,left_on='funding_round_id',right_on='funding_round_id',how='left')[['funding_round_id','funded_at','funding_round_type','raised_amount_usd','pre_money_valuation_usd','post_money_valuation_usd','participants','funded_object_id','investor_object_id','created_at_y']].merge(obj,left_on='funded_object_id',right_on='id',how='left').rename(columns={'name':'company'}).merge(obj,left_on = 'investor_object_id',right_on='id',how='left')
+    fundraise_df.drop(['id_x','id_y'],axis=1,inplace=True)
+    fundraise_df = fundraise_df[['funding_round_id','funded_object_id','investor_object_id','company','name','funded_at','funding_round_type','raised_amount_usd','pre_money_valuation_usd','post_money_valuation_usd','participants']].rename(columns={'name':'investor'})
+    return fundraise_df
+
+def load_investor_info():
+    """
+
+    """
