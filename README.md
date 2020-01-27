@@ -1,1 +1,1 @@
-# Exploring_the_Tech_And_Venture_Ecosystem
+# Exploring the Tech and Venture Ecosystem
