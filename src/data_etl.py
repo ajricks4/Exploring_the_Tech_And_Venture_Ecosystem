@@ -1,14 +1,19 @@
 import numpy as np
 import pandas as pd
 from os import listdir
+import time
+import requests
+from bs4 import BeautifulSoup
 
 
 def load_data():
-    pass
-
-
-
-
+    acq_df = load_acquisitions()
+    ipo_df = load_ipos()
+    offices_df = load_offices()
+    relationship_df = load_relationships()
+    fundraise_df = load_investments()
+    investors_df = load_investors()
+    return acq_df, ipo_df , offices_df, relationship_df, fundraise_df, investors_df
 
 
 def load_acquisitions():
@@ -19,6 +24,7 @@ def load_acquisitions():
     None
 
     Returns:
+    acq_df ():
     """
     acquisitions = pd.read_csv('startup-investments/acquisitions.csv',low_memory=False)
     objects = pd.read_csv('startup-investments/objects.csv',low_memory=False)
@@ -98,7 +104,40 @@ def load_investments():
     fundraise_df = fundraise_df[['funding_round_id','funded_object_id','investor_object_id','company','name','funded_at','funding_round_type','raised_amount_usd','pre_money_valuation_usd','post_money_valuation_usd','participants']].rename(columns={'name':'investor'})
     return fundraise_df
 
-def load_investor_info():
+def load_investors():
     """
+    """
+    funds = pd.read_csv('startup-investments/funds.csv',low_memory=False)
+    offices = pd.read_csv('startup-investments/offices.csv',low_memory=False)
+    objects = pd.read_csv('startup-investments/objects.csv',low_memory=False)
+    objects = objects[objects['id'].str.contains('f')]
+    objects['investor_type'] = objects['permalink'].apply(lambda x: scrape(x))
+    investors_df = funds.merge(objects[['id','name','investor_type']],left_on = 'object_id',right_on = 'id',how='left')[['object_id','fund_id','name_y','name_x','funded_at','raised_currency_code','raised_amount','investor_type']]
+    investors_df.rename(columns={'namy_y':'investor','name_y':'fund_name'},inplace=True)
+    investors_df = investors_df.merge(offices[['object_id','city','state_code','country_code','latitude','longitude']],left_on='object_id',right_on='object_id',how='left')
+    investors_df.rename(columns={'fund_name':'investor','name_x':'fund_name'},inplace=True)
+    investors_df['raised_amount_mm'] = investors_df.apply(lambda row: convert_to_usd(row),axis=1)
+    investors_df['raised_currency_code'] = 'USD'
+    investors_df['year_raised'] = pd.to_datetime(investors_df['funded_at']).apply(lambda x: x.year)
+    return investors_df
 
-    """
+
+
+def scrape(link):
+    time.sleep(4)
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:66.0) Gecko/20100101 Firefox/66.0", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5", "Accept-Encoding": "gzip, deflate", "DNT": "1", "Connection": "close", "Upgrade-Insecure-Requests": "1"}
+    url = 'https://www.crunchbase.com' + link
+    response = requests.get(url,headers=headers)
+    soup = BeautifulSoup(response.content,'html.parser')
+    try:
+        investor_type = soup.find('section-layout',{'cbtableofcontentsitem':'Overview'}).find('enum-multi-formatter').find('span').text.strip()
+    except:
+        return 'Unable to Find'
+    return investor_type
+
+
+def convert_to_usd(row):
+    currency_conversions = {'EUR':1.10,'GBP':1.30,'CAD':0.76,'JPY':0.76,'AUD':0.68,'SEK':0.10,'USD':1.00}
+    cur = row['raised_currency_code']
+    usd_amnt = currency_conversions[cur]* row['raised_amount'] / 1000000000
+    return usd_amnt
